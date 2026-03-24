@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Atrium World Builder</title>
+<link rel="stylesheet" href="style.css" />
+<script type="importmap">
+{
+  "imports": {
+    "three":            "https://esm.sh/three@0.163.0",
+    "three/addons/":    "https://esm.sh/three@0.163.0/addons/",
+    "@atrium/skydome":  "../../packages/client/src/skydome.js"
+  }
+}
+</script>
+</head>
+<body>
+
+<!-- ── Top toolbar ──────────────────────────────────────────────── -->
+<header id="toolbar">
+  <h1>ATRIUM <span class="sub">World Builder</span></h1>
+  <div class="toolbar-group">
+    <button id="btnUndo" title="Undo (Ctrl+Z)">↩</button>
+    <button id="btnRedo" title="Redo (Ctrl+Y)">↪</button>
+    <span class="sep"></span>
+    <button id="modeTranslate" class="mode active" title="Translate (W)">⬔ Move</button>
+    <button id="modeRotate"    class="mode" title="Rotate (E)">↻ Rotate</button>
+    <button id="modeScale"     class="mode" title="Scale (R)">⤢ Scale</button>
+    <span class="sep"></span>
+    <button id="btnDuplicate" title="Duplicate (Ctrl+D)">⧉ Duplicate</button>
+    <button id="btnDelete" title="Delete (Del)">✕ Delete</button>
+  </div>
+  <div class="toolbar-group right">
+    <button id="btnLoadServer" title="Load current world from server">📥 Load from Server</button>
+    <button id="btnExportGltf" class="primary">⬇ Export .gltf</button>
+    <button id="btnPushLive" class="accent" title="Push to running server">⚡ Push Live</button>
+  </div>
+</header>
+
+<!-- ── Main layout ──────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Left: Object palette -->
+  <aside id="palette">
+    <div class="panel-title">Objects</div>
+
+    <div class="palette-section">
+      <div class="section-label">Primitives</div>
+      <div class="palette-grid" id="primitivePalette"></div>
+    </div>
+
+    <div class="palette-section">
+      <div class="section-label">Structures</div>
+      <div class="palette-grid" id="structurePalette"></div>
+    </div>
+
+    <div class="palette-section">
+      <div class="section-label">Environment</div>
+      <div class="palette-grid" id="envPalette"></div>
+    </div>
+
+    <div class="palette-section">
+      <div class="section-label">Lights</div>
+      <div class="palette-grid" id="lightPalette"></div>
+    </div>
+  </aside>
+
+  <!-- Center: 3D Viewport -->
+  <main id="viewport"></main>
+
+  <!-- Right: Inspector -->
+  <aside id="inspector">
+    <div class="panel-title">Inspector</div>
+
+    <!-- Scene graph -->
+    <div class="inspector-section" id="sceneSection">
+      <div class="section-label">Scene Graph</div>
+      <div id="sceneTree"></div>
+    </div>
+
+    <!-- Transform -->
+    <div class="inspector-section" id="transformSection" style="display:none">
+      <div class="section-label">Transform</div>
+      <div class="prop-group">
+        <label>Name</label>
+        <input type="text" id="propName" />
+      </div>
+      <div class="prop-group">
+        <label>Position</label>
+        <div class="vec3-row">
+          <input type="number" id="posX" step="0.1" /><span>X</span>
+          <input type="number" id="posY" step="0.1" /><span>Y</span>
+          <input type="number" id="posZ" step="0.1" /><span>Z</span>
+        </div>
+      </div>
+      <div class="prop-group">
+        <label>Rotation (°)</label>
+        <div class="vec3-row">
+          <input type="number" id="rotX" step="1" /><span>X</span>
+          <input type="number" id="rotY" step="1" /><span>Y</span>
+          <input type="number" id="rotZ" step="1" /><span>Z</span>
+        </div>
+      </div>
+      <div class="prop-group">
+        <label>Scale</label>
+        <div class="vec3-row">
+          <input type="number" id="sclX" step="0.1" value="1" /><span>X</span>
+          <input type="number" id="sclY" step="0.1" value="1" /><span>Y</span>
+          <input type="number" id="sclZ" step="0.1" value="1" /><span>Z</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Material -->
+    <div class="inspector-section" id="materialSection" style="display:none">
+      <div class="section-label">Material</div>
+      <div class="prop-group">
+        <label>Color</label>
+        <input type="color" id="matColor" value="#888888" />
+      </div>
+      <div class="prop-group">
+        <label>Metallic</label>
+        <input type="range" id="matMetallic" min="0" max="1" step="0.01" value="0" />
+        <span class="range-val" id="matMetallicVal">0</span>
+      </div>
+      <div class="prop-group">
+        <label>Roughness</label>
+        <input type="range" id="matRoughness" min="0" max="1" step="0.01" value="0.7" />
+        <span class="range-val" id="matRoughnessVal">0.7</span>
+      </div>
+      <div class="prop-group">
+        <label>Preset</label>
+        <select id="matPreset">
+          <option value="">— custom —</option>
+          <option value="concrete">Concrete</option>
+          <option value="wood">Wood</option>
+          <option value="metal">Metal</option>
+          <option value="plastic">Plastic</option>
+          <option value="glass">Glass</option>
+          <option value="grass">Grass</option>
+          <option value="stone">Stone</option>
+          <option value="brick">Brick</option>
+          <option value="water">Water</option>
+          <option value="emissive">Emissive</option>
+        </select>
+      </div>
+      <div class="prop-group">
+        <label>Emissive</label>
+        <input type="color" id="matEmissive" value="#000000" />
+      </div>
+    </div>
+
+    <!-- Atrium metadata -->
+    <div class="inspector-section" id="worldSection">
+      <div class="section-label">World Settings</div>
+      <div class="prop-group">
+        <label>Name</label>
+        <input type="text" id="worldName" value="My World" />
+      </div>
+      <div class="prop-group">
+        <label>Max Users</label>
+        <input type="number" id="worldMaxUsers" value="20" min="1" max="100" />
+      </div>
+      <div class="prop-group">
+        <label>Nav Mode</label>
+        <select id="worldNavMode">
+          <option value="WALK" selected>Walk</option>
+          <option value="FLY">Fly</option>
+          <option value="ORBIT">Orbit</option>
+        </select>
+      </div>
+    </div>
+  </aside>
+
+</div>
+
+<!-- ── Load from Server dialog ──────────────────────────────────── -->
+<div id="loadDialog" class="dialog-overlay" style="display:none">
+  <div class="dialog">
+    <h3>Load from Live Server</h3>
+    <div class="prop-group">
+      <label>Server URL</label>
+      <input type="text" id="loadWsUrl" value="wss://atrium.ripslide.net/ws" />
+    </div>
+    <p class="hint">Connects to the server, reads the current world state, and populates the builder with all objects. Existing builder objects will be cleared.</p>
+    <div class="dialog-actions">
+      <button id="loadCancel">Cancel</button>
+      <button id="loadConfirm" class="primary">📥 Load</button>
+    </div>
+    <div id="loadStatus" class="push-status"></div>
+  </div>
+</div>
+
+<!-- ── Push Live dialog ─────────────────────────────────────────── -->
+<div id="pushDialog" class="dialog-overlay" style="display:none">
+  <div class="dialog">
+    <h3>Push to Live Server</h3>
+    <div class="prop-group">
+      <label>Server URL</label>
+      <input type="text" id="pushWsUrl" value="wss://atrium.ripslide.net/ws" />
+    </div>
+    <p class="hint">Syncs the builder scene to the live server. Removes server objects not in the builder, adds new ones. Avatar nodes are left untouched.</p>
+    <div class="dialog-actions">
+      <button id="pushCancel">Cancel</button>
+      <button id="pushConfirm" class="accent">⚡ Sync</button>
+    </div>
+    <div id="pushStatus" class="push-status"></div>
+  </div>
+</div>
+
+<!-- ── Status bar ───────────────────────────────────────────────── -->
+<footer id="statusbar">
+  <span id="objectCount">0 objects</span>
+  <span id="statusMsg">Ready</span>
+</footer>
+
+<script type="module" src="builder.js"></script>
+</body>
+</html>

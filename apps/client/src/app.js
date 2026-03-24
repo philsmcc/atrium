@@ -6,6 +6,7 @@ import { WebIO } from '@gltf-transform/core'
 import { KHRONOS_EXTENSIONS } from '@gltf-transform/extensions'
 import { DocumentView } from '@gltf-transform/view'
 import { AtriumClient } from '@atrium/client'
+import { createSkydome } from '@atrium/skydome'
 
 // ---------------------------------------------------------------------------
 // DOM refs
@@ -23,26 +24,33 @@ const overlayEl     = document.getElementById('overlay')
 // Three.js renderer / scene
 // ---------------------------------------------------------------------------
 
-const renderer = new THREE.WebGLRenderer({ antialias: true })
+const renderer = new THREE.WebGLRenderer({ antialias: true, logarithmicDepthBuffer: true })
 renderer.setPixelRatio(window.devicePixelRatio)
 renderer.shadowMap.enabled = true
 viewportEl.appendChild(renderer.domElement)
 
 const threeScene = new THREE.Scene()
-threeScene.background = new THREE.Color(0x1a1a2e)
+threeScene.background = null  // skydome provides the background
 
-// Ambient + directional light
-threeScene.add(new THREE.AmbientLight(0xffffff, 0.6))
-const sun = new THREE.DirectionalLight(0xffffff, 1.2)
+// Skydome
+const skydome = createSkydome({ radius: 800 })
+threeScene.add(skydome.mesh)
+
+// Ambient + directional light (slightly warmer to match sky)
+threeScene.add(new THREE.AmbientLight(0xddeeff, 0.7))
+const sun = new THREE.DirectionalLight(0xfff8e7, 1.4)
 sun.position.set(5, 10, 5)
 sun.castShadow = true
 threeScene.add(sun)
 
+// Subtle ground fog
+threeScene.fog = new THREE.FogExp2(0xc0d0e0, 0.008)
+
 // Grid helper
-threeScene.add(new THREE.GridHelper(40, 40, 0x333333, 0x222222))
+threeScene.add(new THREE.GridHelper(40, 40, 0x667788, 0x556677))
 
 // Camera
-const camera = new THREE.PerspectiveCamera(70, 1, 0.01, 1000)
+const camera = new THREE.PerspectiveCamera(70, 1, 0.1, 1000)
 camera.position.set(0, 1.6, 4)
 
 // Resize handler
@@ -205,13 +213,37 @@ connectBtn.addEventListener('click', () => {
     client.disconnect()
     return
   }
+  doConnect()
+})
+
+function doConnect() {
   const wsUrl = wsUrlInput.value.trim()
   if (!wsUrl) return
   setStatus('connecting')
   const { displayName } = deriveIdentity()
   const avatar = buildAvatarDescriptor(displayName)
   client.connect(wsUrl, { avatar })
+}
+
+// Auto-connect on page load
+doConnect()
+
+// ---------------------------------------------------------------------------
+// Edit World — open builder, which reads live state from server directly
+// ---------------------------------------------------------------------------
+
+const editWorldBtn = document.getElementById('editWorldBtn')
+editWorldBtn.addEventListener('click', () => {
+  const wsUrl = wsUrlInput.value.trim()
+  if (!wsUrl) { alert('Enter a server URL first.'); return }
+  const builderUrl = new URL('/tools/world-builder/index.html', window.location.origin)
+  builderUrl.searchParams.set('server', wsUrl)
+  window.open(builderUrl.toString(), '_blank')
 })
+
+// ---------------------------------------------------------------------------
+// Identity helper
+// ---------------------------------------------------------------------------
 
 function deriveIdentity() {
   // Called just before connect — identity is freshly generated each connect()
@@ -314,8 +346,10 @@ function tick(now) {
     velocity: move ? SPEED : 0,
   })
 
+  // Update skydome
+  skydome.update(dt)
+
   // Render
-  // if (docView) docView.render()
   renderer.render(threeScene, camera)
 }
 

@@ -130,7 +130,8 @@
     "@gltf-transform/view":             "https://esm.sh/@gltf-transform/view@4.3.0?deps=three@0.163.0,@gltf-transform/core@4.3.0",
     "@atrium/som":                      "../../packages/som/src/index.js",
     "@atrium/protocol":                 "../../packages/protocol/src/index.js",
-    "@atrium/client":                   "../../packages/client/src/AtriumClient.js"
+    "@atrium/client":                   "../../packages/client/src/AtriumClient.js",
+    "@atrium/skydome":                  "../../packages/client/src/skydome.js"
   }
 }
 </script>
@@ -140,12 +141,14 @@
 <!-- Toolbar -->
 <div class="toolbar">
   <h1>ATRIUM</h1>
-  <input id="worldUrl" type="text" value="../../tests/fixtures/space.gltf" placeholder=".gltf or .atrium.json URL" />
+  <input id="worldUrl" type="text" value="" placeholder=".gltf or .atrium.json URL" />
   <button id="loadBtn" class="primary">Load</button>
   <span class="ws-label">Server:</span>
-  <input id="wsUrl" type="text" value="ws://localhost:3000" style="width:180px" />
+  <input id="wsUrl" type="text" value="wss://atrium.ripslide.net/ws" style="width:180px" />
   <button id="connectBtn">Connect</button>
   <div class="status-dot" id="statusDot"></div>
+  <span class="ws-label" style="margin-left:auto"></span>
+  <button id="editWorldBtn" title="Open current world in World Builder">✏ Edit World</button>
 </div>
 
 <!-- Viewport -->
